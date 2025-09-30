@@ -1,0 +1,60 @@
+index.html
+<h2>Slowed + Reverb Tool</h2>
+<input type="file" id="upload" accept="audio/*"><br><br>
+<button onclick="playSlowed()">Play Slowed</button>
+<button onclick="downloadAudio()">Download Slowed</button>
+<audio id="player" controls></audio>
+<a id="downloadLink" style="display:none">Download Ready</a>
+
+<script>
+let audioContext, source, audioBuffer, recorder, chunks = [];
+
+document.getElementById('upload').addEventListener('change', function(e) {
+    let file = e.target.files[0];
+    let reader = new FileReader();
+    reader.onload = function(ev) {
+        let arrayBuffer = ev.target.result;
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        audioContext.decodeAudioData(arrayBuffer, function(buffer) {
+            audioBuffer = buffer;
+        });
+    };
+    reader.readAsArrayBuffer(file);
+});
+
+function playSlowed() {
+    if(audioBuffer) {
+        source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.playbackRate.value = 0.75; // slowed
+
+        let dest = audioContext.createMediaStreamDestination();
+        source.connect(dest);
+        source.connect(audioContext.destination);
+
+        recorder = new MediaRecorder(dest.stream);
+        recorder.ondataavailable = e => chunks.push(e.data);
+        recorder.onstop = exportAudio;
+
+        recorder.start();
+        source.start(0);
+        source.onended = () => recorder.stop();
+    }
+}
+
+function exportAudio() {
+    let blob = new Blob(chunks, { type: 'audio/webm' });
+    let url = URL.createObjectURL(blob);
+    let link = document.getElementById('downloadLink');
+    link.href = url;
+    link.download = "slowed-reverb.webm";
+    link.style.display = 'block';
+    link.innerText = "Download Slowed Audio";
+}
+
+function downloadAudio() {
+    if(document.getElementById('downloadLink').style.display === 'none') {
+        alert("Pehle 'Play Slowed' dabao, fir download option aayega.");
+    }
+}
+</script>
